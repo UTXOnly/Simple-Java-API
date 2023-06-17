@@ -20,7 +20,7 @@ def test_make_requests():
             assert response.status_code == 200, f'Request failed with status code {response.status_code}'
         except requests.exceptions.RequestException as e:
             print(f'Error making request: {e}')
-        #time.sleep(1)
+        time.sleep(5)
 
 
 test_make_requests()

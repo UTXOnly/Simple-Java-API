@@ -20,15 +20,23 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Properties;
 import org.postgresql.util.PSQLException;
+import io.github.cdimascio.dotenv.Dotenv;
+import io.github.cdimascio.dotenv.DotenvEntry;
+
 
 public class RandomApi {
     private static final int PORT = 8000;
-    private static final String DATABASE_URL = "jdbc:postgresql://localhost:5432/postgres";
-    private static final String DATABASE_USER = "userdb";
-    private static final String DATABASE_PASSWORD = "password";
+    private static final Dotenv dotenv = Dotenv.load();
+    private static final String DBHOST = dotenv.get("DB_HOST");
+    private static final String DBPORT = dotenv.get("DB_PORT");
+    private static final String DATABASE_USER = dotenv.get("DB_USER");
+    private static final String DATABASE_PASSWORD = dotenv.get("DB_PASSWORD");
+    private static final String DATABASE_NAME = dotenv.get("DB_NAME"); // Update the database name if needed
+    private static final String DATABASE_URL = String.format("jdbc:postgresql://%s:%s/%s", DBHOST, DBPORT, DATABASE_NAME);
     private static final String API_URL = "https://randomuser.me/api/";
-    private static final String INSERT_QUERY = "INSERT INTO person (first_name, last_name, email, username) VALUES ( ?, ?, ?, ?)";
-    private static final String SELECT_QUERY = "SELECT * FROM person";
+    private static final String INSERT_QUERY = "INSERT INTO person (first_name, last_name, email, username) VALUES (?, ?, ?, ?)";
+    private static final String SELECT_QUERY = "SELECT * FROM person ORDER BY id DESC LIMIT 10";
+
 
     public static void main(String[] args) throws InterruptedException {
         try {
@@ -56,11 +64,12 @@ public class RandomApi {
 
     private static void createDatabaseAndUser() throws SQLException {
         Properties adminProperties = new Properties();
-        adminProperties.setProperty("user", "brian.hartford");
-
+        adminProperties.setProperty("user", DATABASE_USER);
+        adminProperties.setProperty("password", DATABASE_PASSWORD);
+    
         try (Connection adminConnection = DriverManager.getConnection(DATABASE_URL, adminProperties)) {
             try (PreparedStatement createUserStatement = adminConnection.prepareStatement(
-                    "CREATE ROLE userdb LOGIN PASSWORD 'password'")) {
+                    "CREATE ROLE " + DATABASE_USER + " LOGIN PASSWORD '" + DATABASE_PASSWORD + "'")) {
                 try {
                     createUserStatement.executeUpdate();
                 } catch (PSQLException e) {
@@ -68,9 +77,9 @@ public class RandomApi {
                     System.out.println("User already exists. Skipping user creation.");
                 }
             }
-
+    
             try (PreparedStatement createDbStatement = adminConnection.prepareStatement(
-                    "CREATE DATABASE db OWNER userdb")) {
+                    "CREATE DATABASE " + DATABASE_NAME + " OWNER " + DATABASE_USER)) {
                 try {
                     createDbStatement.executeUpdate();
                 } catch (PSQLException e) {
@@ -83,19 +92,18 @@ public class RandomApi {
             e.printStackTrace();
             throw new SQLException("Error occurred while creating database and user.");
         }
-
+    
         Properties userProperties = new Properties();
         userProperties.setProperty("user", DATABASE_USER);
         userProperties.setProperty("password", DATABASE_PASSWORD);
-
+    
         try (Connection userConnection = DriverManager.getConnection(DATABASE_URL, userProperties)) {
             try (PreparedStatement createTableStatement = userConnection.prepareStatement(
-                    "CREATE TABLE IF NOT EXISTS person (first_name VARCHAR(255), last_name VARCHAR(255), email VARCHAR(255), username VARCHAR(255))")) {
+                "CREATE TABLE IF NOT EXISTS person (id SERIAL PRIMARY KEY, first_name VARCHAR(255), last_name VARCHAR(255), email VARCHAR(255), username VARCHAR(255))")) {
                 createTableStatement.executeUpdate();
             }
         }
     }
-
 
     static class MetricHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
         @Override
@@ -132,14 +140,12 @@ public class RandomApi {
                 JSONObject result = resultsArray.getJSONObject(i);
 
                 // Extract user data
-                //String gender = result.getString("gender");
                 String firstName = result.getJSONObject("name").getString("first");
                 String lastName = result.getJSONObject("name").getString("last");
                 String email = result.getString("email");
                 String username = result.getJSONObject("login").getString("username");
 
                 JSONObject obj = new JSONObject();
-                //obj.put("gender", gender);
                 obj.put("first_name", firstName);
                 obj.put("last_name", lastName);
                 obj.put("email", email);
@@ -151,7 +157,6 @@ public class RandomApi {
             return outputJsonArray.toString();
         }
 
-
         private void storeDataInDatabase(String data) throws SQLException {
             // Parse and insert data into the database
             JSONArray dataArray = new JSONArray(data);
@@ -162,7 +167,6 @@ public class RandomApi {
                 try (PreparedStatement statement = connection.prepareStatement(INSERT_QUERY)) {
                     for (int i = 0; i < dataArray.length(); i++) {
                         JSONObject item = dataArray.getJSONObject(i);
-                        //statement.setString(1, item.getString("gender"));
                         statement.setString(1, item.getString("first_name"));
                         statement.setString(2, item.getString("last_name"));
                         statement.setString(3, item.getString("email"));
@@ -184,13 +188,11 @@ public class RandomApi {
                 try (PreparedStatement statement = connection.prepareStatement(SELECT_QUERY)) {
                     try (ResultSet resultSet = statement.executeQuery()) {
                         while (resultSet.next()) {
-                            //String gender = resultSet.getString("gender");
                             String firstName = resultSet.getString("first_name");
                             String lastName = resultSet.getString("last_name");
                             String email = resultSet.getString("email");
                             String username = resultSet.getString("username");
 
-                            //result.append("Gender: ").append(gender).append("\n");
                             result.append("First Name: ").append(firstName).append("\n");
                             result.append("Last Name: ").append(lastName).append("\n");
                             result.append("Email: ").append(email).append("\n");

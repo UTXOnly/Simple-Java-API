@@ -6,10 +6,10 @@ services:
     restart: always
     environment:
       - POSTGRES_HOST=127.0.0.1
-      - POSTGRES_PORT=5432
-      - POSTGRES_DB=db
-      - POSTGRES_USER=userdb
-      - POSTGRES_PASSWORD=password
-
+      - POSTGRES_PORT=${DB_PORT}
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - DD_TAGS=env:java
     ports:
-      - 5432:5432
+      - 5445:5432

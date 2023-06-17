@@ -9,18 +9,18 @@ VERSION="1.0.0"
 mvn archetype:generate -DgroupId=${GROUP_ID} -DartifactId=${ARTIFACT_ID} -Dversion=${VERSION} \
     -DarchetypeArtifactId=maven-archetype-quickstart -DinteractiveMode=false
 
-
 cd ${ARTIFACT_ID}
 
-# Remove the generated Java file and test directory
 rm src/main/java/${GROUP_ID}/App.java
 rm -r src/test
 
-# Copy the DBClient.java file to the correct directory and package name
-cp ../DbClient.java ./src/main/java/${GROUP_ID}/
+cp ../RandomApi.java ./src/main/java/${GROUP_ID}/
+cp ../main_pom/pom.xml ./
 
-# Copy the pom.xml file to the project directory
-cp ../../pom.xml ./
-echo $PWD
-# Build the project package
 mvn package
+cd target
+cp ../../start.sh ./
+wget -O dd-java-agent.jar https://dtdg.co/latest-java-tracer
+cd ..
+cp ../.env ./target/
+echo $PWD

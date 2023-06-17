@@ -53,7 +53,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>DbClient</mainClass>
+                            <mainClass>RandomApi</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
@@ -74,7 +74,7 @@
                             <createDependencyReducedPom>false</createDependencyReducedPom>
                             <transformers>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>DbClient</mainClass>
+                                    <mainClass>RandomApi</mainClass>
                                 </transformer>
                             </transformers>
                         </configuration>

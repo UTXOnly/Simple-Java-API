@@ -17,7 +17,7 @@ rm src/main/java/${GROUP_ID}/App.java
 rm -r src/test
 
 # Copy the DBClient.java file to the correct directory and package name
-cp ../DbClient.java ./src/main/java/${GROUP_ID}/
+cp ../RandomApi.java ./src/main/java/${GROUP_ID}/
 
 # Copy the pom.xml file to the project directory
 cp ../../pom.xml ./

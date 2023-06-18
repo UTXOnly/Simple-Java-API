@@ -43,9 +43,6 @@ import io.github.cdimascio.dotenv.Dotenv;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 
-
-
-
 public class RandomApi {
     private static final int PORT = 8000;
     private static final Dotenv dotenv = Dotenv.load();

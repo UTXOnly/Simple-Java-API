@@ -33,7 +33,6 @@ def test_make_requests():
             print(f'Error making request: {e}')
         #time.sleep(1)
 
-
 if __name__ == '__main__':
     fetch_thread = threading.Thread(target=fetch)
     fetch_thread.start()

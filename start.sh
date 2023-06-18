@@ -11,5 +11,3 @@ java -javaagent:./dd-java-agent.jar \
      -Ddd.env=java \
      -Ddd.version=1.0 \
      -jar DbTestsProj-1.0.0.jar \
-
-

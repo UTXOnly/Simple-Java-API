@@ -1,28 +1,16 @@
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInitializer;
-import io.netty.channel.ChannelPipeline;
-import io.netty.channel.SimpleChannelInboundHandler;
+import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.netty.handler.codec.http.DefaultFullHttpResponse;
-import io.netty.handler.codec.http.FullHttpRequest;
-import io.netty.handler.codec.http.FullHttpResponse;
-import io.netty.handler.codec.http.HttpHeaderNames;
-import io.netty.handler.codec.http.HttpObjectAggregator;
-import io.netty.handler.codec.http.HttpResponse;
-import io.netty.handler.codec.http.HttpResponseStatus;
-import io.netty.handler.codec.http.HttpServerCodec;
-import io.netty.handler.codec.http.HttpVersion;
+import io.netty.handler.codec.http.*;
 import io.netty.util.CharsetUtil;
-
 import org.json.JSONArray;
 import org.json.JSONObject;
-
 import java.io.IOException;
+
+
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -33,15 +21,15 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Properties;
+import org.postgresql.util.PSQLException;
+import io.github.cdimascio.dotenv.Dotenv;
+import io.github.cdimascio.dotenv.DotenvEntry;
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import javax.sql.DataSource;
-
-import org.postgresql.util.PSQLException;
-import io.github.cdimascio.dotenv.Dotenv;
-import com.zaxxer.hikari.HikariConfig;
-import com.zaxxer.hikari.HikariDataSource;
 
 public class RandomApi {
     private static final int PORT = 8000;
@@ -50,14 +38,13 @@ public class RandomApi {
     private static final String DBPORT = dotenv.get("DB_PORT");
     private static final String DATABASE_USER = dotenv.get("DB_USER");
     private static final String DATABASE_PASSWORD = dotenv.get("DB_PASSWORD");
-    private static final String DATABASE_NAME = dotenv.get("DB_NAME");
+    private static final String DATABASE_NAME = dotenv.get("DB_NAME"); // Update the database name if needed
     private static final String DATABASE_URL = String.format("jdbc:postgresql://%s:%s/%s", DBHOST, DBPORT, DATABASE_NAME);
     private static final String API_URL = "https://randomuser.me/api/";
     private static final String INSERT_QUERY = "INSERT INTO person (first_name, last_name, email, username) VALUES (?, ?, ?, ?)";
     private static final String SELECT_QUERY = "SELECT * FROM person ORDER BY id DESC LIMIT 10";
 
     private static DataSource dataSource;
-    private static ExecutorService executorService;
 
     public static void main(String[] args) throws InterruptedException {
         try {
@@ -69,8 +56,6 @@ public class RandomApi {
         }
 
         EventLoopGroup group = new NioEventLoopGroup();
-        executorService = Executors.newFixedThreadPool(2);
-
         try {
             ServerBootstrap bootstrap = new ServerBootstrap()
                     .group(group)
@@ -83,7 +68,6 @@ public class RandomApi {
             channel.closeFuture().sync();
         } finally {
             group.shutdownGracefully();
-            executorService.shutdown();
         }
     }
 
@@ -98,6 +82,7 @@ public class RandomApi {
                 try {
                     createUserStatement.executeUpdate();
                 } catch (PSQLException e) {
+                    // User already exists, handle the error or skip creating the user
                     System.out.println("User already exists. Skipping user creation.");
                 }
             }
@@ -107,6 +92,7 @@ public class RandomApi {
                 try {
                     createDbStatement.executeUpdate();
                 } catch (PSQLException e) {
+                    // Database already exists, handle the error or skip creating the database
                     System.out.println("Database already exists. Skipping database creation.");
                 }
             }
@@ -121,7 +107,7 @@ public class RandomApi {
 
         try (Connection userConnection = DriverManager.getConnection(DATABASE_URL, userProperties)) {
             try (PreparedStatement createTableStatement = userConnection.prepareStatement(
-                    "CREATE TABLE IF NOT EXISTS person (id SERIAL PRIMARY KEY, first_name VARCHAR(255), last_name VARCHAR(255), email VARCHAR(255), username VARCHAR(255))")) {
+                "CREATE TABLE IF NOT EXISTS person (id SERIAL PRIMARY KEY, first_name VARCHAR(255), last_name VARCHAR(255), email VARCHAR(255), username VARCHAR(255))")) {
                 createTableStatement.executeUpdate();
             }
         }
@@ -136,69 +122,87 @@ public class RandomApi {
         dataSource = new HikariDataSource(config);
     }
 
-    static class MetricHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
+/*    static class MetricHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
         @Override
         protected void channelRead0(ChannelHandlerContext ctx, FullHttpRequest request) {
             if (request.uri().equals("/query")) {
-                executorService.submit(() -> handleQueryRequest(ctx));
+                try {
+                    String responseData = fetchDataFromAPI();
+                    storeDataInDatabase(responseData);
+                    String queryResult = retrieveDataFromDatabase();
+                    sendResponse(ctx, HttpResponseStatus.OK, queryResult);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    sendResponse(ctx, HttpResponseStatus.INTERNAL_SERVER_ERROR, "Error occurred");
+                }
+            } else {
+                sendResponse(ctx, HttpResponseStatus.NOT_FOUND, "Endpoint not found");
+            }
+        } */
+
+
+
+// ...
+
+    static class MetricHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
+    
+        @Override
+        protected void channelRead0(ChannelHandlerContext ctx, FullHttpRequest request) {
+            if (request.uri().equals("/query")) {
+                try {
+                    String queryResult = retrieveDataFromDatabase();
+                    sendResponse(ctx, HttpResponseStatus.OK, queryResult);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    sendResponse(ctx, HttpResponseStatus.INTERNAL_SERVER_ERROR, "Error occurred");
+                }
             } else if (request.uri().equals("/fetch")) {
-                executorService.submit(() -> handleFetchRequest(ctx));
+                try {
+                    String responseData = fetchDataFromAPI();
+                    storeDataInDatabase(responseData);
+                    System.out.println("Data fetched and stored successfully.");
+                    sendResponse(ctx, HttpResponseStatus.OK, "Fetching data from API...");
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    System.out.println("Error occurred while fetching and storing data.");
+                    sendResponse(ctx, HttpResponseStatus.INTERNAL_SERVER_ERROR, "Error occurred");
+                }
             } else {
                 sendResponse(ctx, HttpResponseStatus.NOT_FOUND, "Endpoint not found");
             }
         }
+        
 
-        private void handleQueryRequest(ChannelHandlerContext ctx) {
-            try {
-                String queryResult = retrieveDataFromDatabase();
-                System.out.println("Query function completed");
-                sendResponse(ctx, HttpResponseStatus.OK, queryResult);
-            } catch (Exception e) {
-                e.printStackTrace();
-                sendResponse(ctx, HttpResponseStatus.INTERNAL_SERVER_ERROR, "Error occurred");
-            }
-        }
-
-        private void handleFetchRequest(ChannelHandlerContext ctx) {
-            try {
-                String responseData = fetchDataFromAPI();
-                storeDataInDatabase(responseData);
-                System.out.println("Data fetched and stored successfully.");
-                sendResponse(ctx, HttpResponseStatus.OK, "Fetching data from API...");
-            } catch (Exception e) {
-                e.printStackTrace();
-                System.out.println("Error occurred while fetching and storing data.");
-                sendResponse(ctx, HttpResponseStatus.INTERNAL_SERVER_ERROR, "Error occurred");
-            }
-        }
+    
 
         private String fetchDataFromAPI() throws Exception {
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(API_URL))
                     .build();
-
+        
             try {
                 HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-
+        
                 JSONObject jsonObject = new JSONObject(response.body());
                 JSONArray resultsArray = jsonObject.getJSONArray("results");
                 JSONArray outputJsonArray = new JSONArray();
-
+        
                 for (int i = 0; i < resultsArray.length(); i++) {
                     JSONObject result = resultsArray.getJSONObject(i);
-
+        
+                    // Extract user data
                     String firstName = result.getJSONObject("name").getString("first");
                     String lastName = result.getJSONObject("name").getString("last");
                     String email = result.getString("email");
                     String username = result.getJSONObject("login").getString("username");
-
+        
                     JSONObject obj = new JSONObject();
                     obj.put("first_name", firstName);
                     obj.put("last_name", lastName);
                     obj.put("email", email);
                     obj.put("username", username);
-
+        
                     outputJsonArray.put(obj);
                 }
                 return outputJsonArray.toString();
@@ -208,7 +212,9 @@ public class RandomApi {
             }
         }
 
+
         private void storeDataInDatabase(String data) throws SQLException {
+            // Parse and insert data into the database
             JSONArray dataArray = new JSONArray(data);
             try (Connection connection = dataSource.getConnection()) {
                 try (PreparedStatement statement = connection.prepareStatement(INSERT_QUERY)) {
@@ -226,6 +232,7 @@ public class RandomApi {
         }
 
         private String retrieveDataFromDatabase() throws SQLException {
+            // Retrieve data from the database
             StringBuilder result = new StringBuilder();
             try (Connection connection = dataSource.getConnection()) {
                 try (PreparedStatement statement = connection.prepareStatement(SELECT_QUERY)) {
